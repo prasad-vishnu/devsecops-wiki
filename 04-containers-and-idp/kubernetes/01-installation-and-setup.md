@@ -470,6 +470,14 @@ All labs work on k3d with these flags. Where behaviour differs it is noted.
 
 ---
 
+## 5a. Bare-Metal / VMware Alternative (Rocky Linux Multi-VM Cluster)
+
+If you need a true multi-virtual-machine cluster that closely mirrors physical bare-metal or on-premises enterprise platforms (distinct kernels, dedicated systemd init subsystems, cgroup v2, and realistic node network interfaces) rather than container-in-container abstraction:
+
+Follow our dedicated guide: **[01a-rocky-linux-vmware-setup.md](01a-rocky-linux-vmware-setup.md)** for a 3-Node Cluster (1 control plane, 2 workers) on Rocky Linux 9 using VMware Workstation / ESXi with CRI-O, kubeadm, and Calico CNI.
+
+---
+
 ## 6. kubeconfig and Contexts
 
 `kubectl` reads `~/.kube/config` (or the files in `$KUBECONFIG`). The file has three lists and one pointer:
