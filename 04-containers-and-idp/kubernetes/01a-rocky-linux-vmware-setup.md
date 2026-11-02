@@ -22,41 +22,46 @@ Unlike container-in-container abstractions (such as `kind` or `k3d`), running Ku
 
 ```mermaid
 flowchart TB
-    subgraph Host["Host Machine (Windows / macOS / Linux)"]
-        subgraph VMWareNet["VMware Virtual Network (VMnet8 - NAT: 192.168.229.0/24)"]
-            GW["Virtual Gateway / DNS<br/>192.168.229.2"]
-            
-            subgraph Master["k8s-master (Control Plane)"]
-                API["kube-apiserver: 6443"]
-                ETCD["etcd: 2379-2380"]
-                CM["kube-controller-manager"]
-                SCHED["kube-scheduler"]
-                K1["kubelet + CRI-O"]
-                IP1["Static IP: 192.168.229.10"]
-            end
-
-            subgraph Worker1["k8s-worker1 (Worker Node)"]
-                K2["kubelet + CRI-O"]
-                PROXY1["kube-proxy"]
-                PODS1["User Pods"]
-                IP2["Static IP: 192.168.229.20"]
-            end
-
-            subgraph Worker2["k8s-worker2 (Worker Node)"]
-                K3["kubelet + CRI-O"]
-                PROXY2["kube-proxy"]
-                PODS2["User Pods"]
-                IP3["Static IP: 192.168.229.30"]
-            end
-        end
-
-        HOSTCLI["Host CLI (kubectl / k9s)<br/>%USERPROFILE%/.kube/config"]
+    subgraph Host["Host Workstation (Windows / macOS / Linux)"]
+        HOSTCLI["Host Management<br/>kubectl / k9s / admin.conf"]
     end
 
-    HOSTCLI -->|HTTPS:6443| API
-    Master <-->|Flannel / Calico CNI Overlay (10.244.0.0/16)| Worker1
-    Master <-->|Flannel / Calico CNI Overlay (10.244.0.0/16)| Worker2
-    Worker1 <-->|Flannel / Calico CNI Overlay (10.244.0.0/16)| Worker2
+    subgraph Master["Control Plane: k8s-master.itroom.local (192.168.229.10)"]
+        API["kube-apiserver: 6443"]
+        ETCD[("etcd: 2379-2380")]
+        CTRL["controller-manager & scheduler"]
+        K1["kubelet + CRI-O"]
+    end
+
+    subgraph Worker1["Worker Node 1: k8s-worker1.itroom.local (192.168.229.20)"]
+        K2["kubelet + CRI-O"]
+        PROXY1["kube-proxy"]
+        PODS1["User Workload Pods"]
+    end
+
+    subgraph Worker2["Worker Node 2: k8s-worker2.itroom.local (192.168.229.30)"]
+        K3["kubelet + CRI-O"]
+        PROXY2["kube-proxy"]
+        PODS2["User Workload Pods"]
+    end
+
+    GW["VMware VMnet8 NAT Switch: 192.168.229.0/24<br/>Gateway & DNS: 192.168.229.2"]
+
+    HOSTCLI -->|"HTTPS: 6443 (admin.conf)"| API
+    API <-->|"gRPC, TLS"| ETCD
+    CTRL --> API
+    K1 --> API
+
+    K2 -->|"Register & Heartbeat: 10250"| API
+    K3 -->|"Register & Heartbeat: 10250"| API
+
+    K1 <-.->|"Calico VXLAN: 10.244.0.0/16"| K2
+    K1 <-.->|"Calico VXLAN: 10.244.0.0/16"| K3
+    K2 <-.->|"Calico VXLAN: 10.244.0.0/16"| K3
+
+    K1 -.->|"Default Gateway"| GW
+    K2 -.->|"Default Gateway"| GW
+    K3 -.->|"Default Gateway"| GW
 ```
 
 ### 1.2 Hardware and Resource Allocations
