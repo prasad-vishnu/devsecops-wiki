@@ -362,12 +362,15 @@ EOF
 
 ### 4.3 Install CRI-O and Dependencies
 
-Install `container-selinux`, `cri-o`, and `cri-tools` on **all 3 nodes**:
+Install `container-selinux` and `cri-o` on **all 3 nodes**:
 
 ```bash
 sudo dnf install -y container-selinux
-sudo dnf install -y cri-o cri-tools
+sudo dnf install -y cri-o
 ```
+
+> [!NOTE]
+> `cri-o` is the container runtime daemon itself and installs directly from the CRI-O repository. The companion CLI debugging tool `cri-tools` (which provides `crictl`) is maintained by the Kubernetes project and hosted in the `pkgs.k8s.io` repository. It is installed in **Step 5.2** alongside `kubelet` and `kubeadm` using `--disableexcludes=kubernetes`, or you can download the static `crictl` binary directly in Step 4.5 below.
 
 ### 4.4 Configure CRI-O Systemd Cgroup and Pause Image
 
@@ -407,18 +410,23 @@ sudo systemctl enable --now crio
 sudo systemctl status crio --no-pager
 ```
 
-Verify CRI-O socket responsiveness:
+Verify the CRI-O runtime socket is active:
 
 ```bash
-sudo crictl version
+sudo test -S /var/run/crio/crio.sock && echo "CRI-O socket is active and listening"
+```
+
+*(Optional)* If you wish to use the `crictl` CLI before installing Kubernetes packages in Step 5, you can install the standalone `crictl` binary directly from GitHub releases:
+
+```bash
+CRICTL_VERSION="v1.32.0"
+curl -fsSL "https://github.com/kubernetes-sigs/cri-tools/releases/download/${CRICTL_VERSION}/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz" | sudo tar -C /usr/local/bin -xz
+crictl --version
 ```
 
 Expected output:
 ```text
-Version:  0.1.0
-RuntimeName:  cri-o
-RuntimeVersion:  1.37.x
-RuntimeApiVersion:  v1
+crictl version 1.32.0
 ```
 
 ---
@@ -446,12 +454,12 @@ exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
 EOF
 ```
 
-### 5.2 Install kubeadm, kubelet, and kubectl
+### 5.2 Install kubeadm, kubelet, kubectl, and cri-tools
 
-Install the pinned packages:
+Install the pinned packages and `cri-tools` from the `pkgs.k8s.io` repository:
 
 ```bash
-sudo dnf install -y kubelet kubeadm kubectl --disableexcludes=kubernetes
+sudo dnf install -y kubelet kubeadm kubectl cri-tools --disableexcludes=kubernetes
 
 # Enable the kubelet daemon
 sudo systemctl enable --now kubelet
@@ -814,6 +822,7 @@ kubectl delete namespace smoke-test
 
 | Symptom | Probable Cause | Diagnostic Command | Immediate Fix |
 |---|---|---|---|
+| **`cri-tools package is not available` / `No match for argument: cri-tools`** | Attempted to install `cri-tools` before configuring `kubernetes.repo`, or without `--disableexcludes=kubernetes`. `cri-tools` is in `pkgs.k8s.io`, not the CRI-O OBS repo. | `sudo dnf info cri-tools` | Install `cri-tools` after adding `kubernetes.repo` using `sudo dnf install -y cri-tools --disableexcludes=kubernetes`, or install the standalone binary directly via GitHub. |
 | **`crio` service fails to start** | Duplicate storage configuration, missing kernel modules, or invalid `/etc/crio/crio.conf.d/` syntax. | `sudo journalctl -xeu crio -n 50` | Verify `overlay` and `br_netfilter` are loaded (`lsmod \| grep overlay`). Test syntax with `sudo crio config`. |
 | **`crictl` cannot connect to runtime endpoint** | Default endpoint misconfigured or CRI-O socket not created. | `sudo crictl info` | Verify `/etc/crictl.yaml` points to `unix:///var/run/crio/crio.sock` and `sudo systemctl status crio` is active. |
 | **Worker node vanishes or overwrites master/other worker** | Cloned VMs share duplicate `/etc/machine-id` or duplicate MAC addresses. | `sudo cat /etc/machine-id` on all nodes; compare values. | Run `sudo rm -f /etc/machine-id && sudo systemd-machine-id-setup`. Reboot worker node and rejoin. |
