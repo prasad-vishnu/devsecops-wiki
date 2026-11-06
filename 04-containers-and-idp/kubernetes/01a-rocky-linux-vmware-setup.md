@@ -6,7 +6,7 @@
 | **Role** | Anchor (Bare-Metal / Virtualized Node Deployment Guide) |
 | **Category** | Local Multi-Node Virtualization |
 | **Prerequisites** | VMware Workstation Pro / Player / ESXi / Fusion, Rocky Linux 9 Minimal ISO, 16 GB+ Host RAM |
-| **Target version** | Kubernetes 1.31+ on Rocky Linux 9 (x86_64), CRI-O 1.31+ |
+| **Target version** | Kubernetes 1.37+ on Rocky Linux 9 (x86_64), CRI-O 1.37+ |
 | **Capstone phase** | Phase 3 (Months 9-12) |
 | **Official docs** | https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ |
 
@@ -340,15 +340,15 @@ sudo systemctl disable --now firewalld
 
 - **Kubernetes-native cgroups**: CRI-O defaults to `systemd` cgroup management out of the box on systemd-based distributions like Rocky Linux, avoiding the cgroupfs mismatch issues common with containerd.
 - **Enterprise Red Hat lineage**: CRI-O is the native container engine of Red Hat OpenShift, making it battle-tested on RHEL kernels.
-- **Version Alignment**: CRI-O release numbers match Kubernetes release numbers (`v1.31` CRI-O runs `v1.31` Kubernetes).
+- **Version Alignment**: CRI-O release numbers match Kubernetes release numbers (`v1.37` CRI-O runs `v1.37` Kubernetes).
 - **Lightweight socket footprint**: CRI-O exposes a direct gRPC CRI endpoint at `/var/run/crio/crio.sock`.
 
-### 4.2 Configure the CRI-O RPM Repository (v1.31)
+### 4.2 Configure the CRI-O RPM Repository (v1.37 - Latest Stable)
 
 Upstream CRI-O publishes verified RPM builds for Enterprise Linux 9 via the openSUSE Build Service (`isv:cri-o`). Run on **all 3 nodes**:
 
 ```bash
-CRIO_VERSION="v1.31"
+CRIO_VERSION="v1.37"
 
 sudo tee /etc/yum.repos.d/cri-o.repo <<EOF
 [cri-o]
@@ -417,7 +417,7 @@ Expected output:
 ```text
 Version:  0.1.0
 RuntimeName:  cri-o
-RuntimeVersion:  1.31.x
+RuntimeVersion:  1.37.x
 RuntimeApiVersion:  v1
 ```
 
@@ -428,18 +428,20 @@ RuntimeApiVersion:  v1
 > [!IMPORTANT]
 > The legacy Google-hosted repositories (`packages.cloud.google.com` / `apt.kubernetes.io` / `yum.kubernetes.io`) were permanently deprecated and decommissioned in 2024. All modern Kubernetes packages are published exclusively on the community-owned infrastructure at **`pkgs.k8s.io`**.
 
-### 5.1 Configure the Kubernetes RPM Repository (v1.31)
+### 5.1 Configure the Kubernetes RPM Repository (v1.37 - Latest Stable)
 
 Run on **all 3 nodes**:
 
 ```bash
-sudo tee /etc/yum.repos.d/kubernetes.repo <<'EOF'
+KUBERNETES_VERSION="v1.37"
+
+sudo tee /etc/yum.repos.d/kubernetes.repo <<EOF
 [kubernetes]
 name=Kubernetes
-baseurl=https://pkgs.k8s.io/core:/stable:/v1.31/rpm/
+baseurl=https://pkgs.k8s.io/core:/stable:/$KUBERNETES_VERSION/rpm/
 enabled=1
 gpgcheck=1
-gpgkey=https://pkgs.k8s.io/core:/stable:/v1.31/rpm/repodata/repomd.xml
+gpgkey=https://pkgs.k8s.io/core:/stable:/$KUBERNETES_VERSION/rpm/repodata/repomd.xml.key
 exclude=kubelet kubeadm kubectl cri-tools kubernetes-cni
 EOF
 ```
@@ -494,7 +496,7 @@ nodeRegistration:
 ---
 apiVersion: kubeadm.k8s.io/v1beta4
 kind: ClusterConfiguration
-kubernetesVersion: v1.31.0
+kubernetesVersion: v1.37.0
 clusterName: local-rocky-k8s
 controlPlaneEndpoint: "192.168.229.10:6443"
 networking:
@@ -555,7 +557,7 @@ A CNI plugin is required so Pods can communicate across physical nodes and CoreD
 Download and configure Calico to match our specified Pod CIDR (`10.244.0.0/16`):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/calico.yaml -o calico.yaml
+curl -fsSL https://raw.githubusercontent.com/projectcalico/calico/v3.33.0/manifests/calico.yaml -o calico.yaml
 
 # Replace default 192.168.0.0/16 CIDR with our 10.244.0.0/16 CIDR
 sed -i 's|# - name: CALICO_IPV4POOL_CIDR|- name: CALICO_IPV4POOL_CIDR|g' calico.yaml
@@ -582,7 +584,7 @@ Within 60 to 90 seconds:
 kubectl get nodes
 # Expected output:
 # NAME                      STATUS   ROLES           AGE   VERSION
-# k8s-master.itroom.local   Ready    control-plane   2m    v1.31.x
+# k8s-master.itroom.local   Ready    control-plane   2m    v1.37.x
 ```
 
 ---
@@ -634,9 +636,9 @@ Expected output:
 
 ```text
 NAME                       STATUS   ROLES           AGE     VERSION   INTERNAL-IP      OS-IMAGE                      CONTAINER-RUNTIME
-k8s-master.itroom.local    Ready    control-plane   10m     v1.31.0   192.168.229.10   Rocky Linux 9.x (Blue Onyx)   cri-o://1.31.x
-k8s-worker1.itroom.local   Ready    <none>          2m      v1.31.0   192.168.229.20   Rocky Linux 9.x (Blue Onyx)   cri-o://1.31.x
-k8s-worker2.itroom.local   Ready    <none>          1m      v1.31.0   192.168.229.30   Rocky Linux 9.x (Blue Onyx)   cri-o://1.31.x
+k8s-master.itroom.local    Ready    control-plane   10m     v1.37.0   192.168.229.10   Rocky Linux 9.x (Blue Onyx)   cri-o://1.37.x
+k8s-worker1.itroom.local   Ready    <none>          2m      v1.37.0   192.168.229.20   Rocky Linux 9.x (Blue Onyx)   cri-o://1.37.x
+k8s-worker2.itroom.local   Ready    <none>          1m      v1.37.0   192.168.229.30   Rocky Linux 9.x (Blue Onyx)   cri-o://1.37.x
 ```
 
 Label the worker nodes so their roles display cleanly in `kubectl`:
@@ -657,7 +659,7 @@ A bare `kubeadm` cluster lacks dynamic volume provisioning and resource metrics 
 Install Rancher's lightweight `local-path-provisioner`, which dynamically allocates host directories on worker nodes to fulfill `PersistentVolumeClaims`:
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.28/deploy/local-path-storage.yaml
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.37/deploy/local-path-storage.yaml
 
 # Set local-path as the default StorageClass
 kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
@@ -845,7 +847,7 @@ kubectl delete namespace smoke-test
 ### Snapshot the Cluster (VMware)
 Before testing risky upgrades, etcd mutations, or kernel changes:
 1. Power off all three VMs: `sudo shutdown -h now`.
-2. In VMware Workstation / Fusion: Select each VM -> **Snapshot** -> **Take Snapshot** (e.g., `clean-k8s-v1.31-crio-installed`).
+2. In VMware Workstation / Fusion: Select each VM -> **Snapshot** -> **Take Snapshot** (e.g., `clean-k8s-v1.37-crio-installed`).
 3. If an experiment breaks the control plane or etcd quorum, revert all 3 VMs to the snapshot in under 10 seconds.
 
 ### Drain and Cordon a Worker Node
