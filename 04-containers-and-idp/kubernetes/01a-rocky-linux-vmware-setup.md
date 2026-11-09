@@ -644,9 +644,9 @@ Expected output:
 
 ```text
 NAME                       STATUS   ROLES           AGE     VERSION   INTERNAL-IP      EXTERNAL-IP   OS-IMAGE                      KERNEL-VERSION                         CONTAINER-RUNTIME
-k8s-master.itroom.local    Ready    control-plane   3h38m   v1.37.2   192.168.229.10   <none>        Rocky Linux 9.8 (Blue Onyx)   5.14.0-687.66.1.el9_8.x86_64 (amd64)   cri-o://1.37.3
-k8s-worker1.itroom.local   Ready    <none>          3h22m   v1.37.2   192.168.229.20   <none>        Rocky Linux 9.8 (Blue Onyx)   5.14.0-687.66.1.el9_8.x86_64 (amd64)   cri-o://1.37.3
-k8s-worker2.itroom.local   Ready    <none>          3h22m   v1.37.2   192.168.229.30   <none>        Rocky Linux 9.8 (Blue Onyx)   5.14.0-687.66.1.el9_8.x86_64 (amd64)   cri-o://1.37.3
+k8s-master.itroom.local    Ready    control-plane   3h44m   v1.37.2   192.168.229.10   <none>        Rocky Linux 9.8 (Blue Onyx)   5.14.0-687.66.1.el9_8.x86_64 (amd64)   cri-o://1.37.3
+k8s-worker1.itroom.local   Ready    worker          3h29m   v1.37.2   192.168.229.20   <none>        Rocky Linux 9.8 (Blue Onyx)   5.14.0-687.66.1.el9_8.x86_64 (amd64)   cri-o://1.37.3
+k8s-worker2.itroom.local   Ready    worker          3h29m   v1.37.2   192.168.229.30   <none>        Rocky Linux 9.8 (Blue Onyx)   5.14.0-687.66.1.el9_8.x86_64 (amd64)   cri-o://1.37.3
 ```
 
 Label the worker nodes so their roles display cleanly in `kubectl`:
